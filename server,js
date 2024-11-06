@@ -1,0 +1,45 @@
+// server.js
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static('public')); // Serve static files
+
+// Store player data
+const players = {};
+
+// Handle player connections
+io.on('connection', (socket) => {
+    console.log(`Player connected: ${socket.id}`);
+    
+    // Initialize player
+    players[socket.id] = { x: 100, y: 100 };
+
+    // Send updated player data to all clients
+    io.emit('updateGameState', players);
+
+    // Handle player movement
+    socket.on('playerMovement', (movement) => {
+        const player = players[socket.id];
+        if (movement.up) player.y -= 5;
+        if (movement.down) player.y += 5;
+        if (movement.left) player.x -= 5;
+        if (movement.right) player.x += 5;
+        io.emit('updateGameState', players);
+    });
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+        console.log(`Player disconnected: ${socket.id}`);
+        delete players[socket.id];
+        io.emit('updateGameState', players);
+    });
+});
+
+server.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
+});
